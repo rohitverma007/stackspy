@@ -22,7 +22,7 @@ pub enum AddressVersion {
 
 #[pyclass]
 #[derive(Clone)]
-struct PyPublicKey {
+pub struct PyPublicKey {
     pub_key: PublicKey,
 }
 
@@ -58,8 +58,14 @@ impl From<PyPublicKey> for PublicKey {
 
 #[pyclass]
 #[derive(Clone)]
-struct PyPrivateKey {
+pub struct PyPrivateKey {
     sec_key: SecretKey,
+}
+
+impl PyPrivateKey {
+    pub fn get_inner_sec_key(&self) -> SecretKey {
+        self.sec_key
+    }
 }
 
 #[pymethods]
@@ -73,13 +79,13 @@ impl PyPrivateKey {
         secret_key
     }
 
-    fn serialize(&self, py: Python) -> Py<PyBytes> {
+    pub fn serialize(&self, py: Python) -> Py<PyBytes> {
         PyBytes::new(py, &self.sec_key[..]).into()
     }
 }
 
-type StacksPublicKey = PyPublicKey;
-type StacksPrivateKey = PyPrivateKey;
+pub type StacksPublicKey = PyPublicKey;
+pub type StacksPrivateKey = PyPrivateKey;
 
 const STX_DERIVATION_PATH: &str = "m/44'/5757'/0'/0";
 
@@ -205,6 +211,6 @@ pub fn init_module(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<AddressVersion>()?;
     m.add_class::<StacksAccount>()?;
     m.add_class::<StacksWallet>()?;
-
+    m.add_class::<StacksPrivateKey>()?;
     Ok(())
 }

@@ -1,7 +1,10 @@
 use pyo3::prelude::*;
 use stacks_rs::{StacksMainnet as StacksMainnetInner, StacksTestnet as StacksTestnetInner, StacksMocknet as StacksMocknetInner, Network};
+use stacks_rs::network::TransactionVersion;
+use stacks_rs::network::ChainID;
 
 #[pyclass]
+#[derive(Debug)]
 pub struct StacksMainnet {
     inner: StacksMainnetInner,
 }
@@ -28,7 +31,35 @@ impl StacksMainnet {
     }
 }
 
+impl AsRef<StacksMainnet> for StacksMainnet {
+    fn as_ref(&self) -> &StacksMainnet {
+        self
+    }
+}
+
+impl Clone for StacksMainnet {
+    fn clone(&self) -> Self {
+        StacksMainnet {
+            inner: self.inner.clone(),
+        }
+    }
+}
+impl Network for StacksMainnet {
+    // implement the necessary methods here
+    fn version(&self) -> TransactionVersion {
+        self.inner.version() as TransactionVersion
+    }
+
+    fn chain_id(&self) -> ChainID {
+        self.inner.chain_id() as ChainID
+    }
+
+    fn base_url(&self) -> String {
+        self.inner.base_url()
+    }    
+}
 #[pyclass]
+#[derive(Clone)]
 pub struct StacksTestnet {
     inner: StacksTestnetInner,
 }
