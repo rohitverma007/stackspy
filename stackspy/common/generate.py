@@ -9,6 +9,9 @@ from cryptography.hazmat.backends import default_backend
 
 from binascii import hexlify, unhexlify
 from mnemonic import Mnemonic
+from derive import derive_wallet_keys
+from wallet import Wallet
+from bitcoinlib.keys import HDKey
 
 def generate_mnemonic(bits=256):
     """Generate a mnemonic phrase following BIP39 standards.
@@ -16,7 +19,6 @@ def generate_mnemonic(bits=256):
     Args:
         bits (int): Strength of the mnemonic phrase. Must be multiple of 32.
                     Default is 128.
-        
     Returns:
         str: Generated mnemonic phrase.
     """
@@ -39,7 +41,7 @@ def encrypt_mnemonic(phrase, password, salt=None, iterations=100000, key_len=48)
 
     # Use PBKDF2 to derive the encryption key, MAC key and IV
     salt = salt if salt else urandom(16)
-    # salt = bytes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
+
     kdf = PBKDF2HMAC(
         algorithm=SHA512(),
         length=key_len,
@@ -71,3 +73,22 @@ def encrypt_mnemonic(phrase, password, salt=None, iterations=100000, key_len=48)
     payload = salt + hmac_digest + cipher_text
 
     return payload
+
+def mnemonic_to_seed(mnemonic: str, passphrase: str = "") -> bytes:
+    mnemo = Mnemonic(language="english")
+    seed = mnemo.to_seed(mnemonic, passphrase)
+    return seed
+
+def generate_wallet(secret_key, password):
+    encrypted_secret_key = encrypt_mnemonic(secret_key, password)
+    root_private_key = mnemonic_to_seed(secret_key)
+    root_node = HDKey.from_seed(root_private_key)
+    salt, root_key, config_private_key = derive_wallet_keys(root_node)
+    wallet = Wallet(
+        salt.hex(),
+        root_key,
+        config_private_key,
+        encrypted_secret_key.hex(),
+        accounts=[]
+    )
+    return wallet
