@@ -9,9 +9,11 @@ from cryptography.hazmat.backends import default_backend
 
 from binascii import hexlify, unhexlify
 from mnemonic import Mnemonic
-from derive import derive_wallet_keys
+from derive import derive_wallet_keys, derive_account
 from wallet import Wallet
 from bitcoinlib.keys import HDKey
+from account import Account
+from helpers import DerivationType, get_root_node
 
 def generate_mnemonic(bits=256):
     """Generate a mnemonic phrase following BIP39 standards.
@@ -91,4 +93,23 @@ def generate_wallet(secret_key, password):
         encrypted_secret_key.hex(),
         accounts=[]
     )
+    new_account = generate_new_account(wallet)
+    wallet.accounts.append(new_account)
     return wallet
+
+def generate_new_account(wallet):
+    account_index = len(wallet.accounts)
+    stx_private_key, data_private_key, apps_key, salt, index = derive_account(
+        get_root_node(wallet),
+        account_index,
+        wallet.salt,
+        DerivationType.Wallet
+    )
+    new_account = Account(
+        stx_private_key,
+        data_private_key,
+        salt,
+        apps_key,
+        index
+    )
+    return new_account
