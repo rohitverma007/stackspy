@@ -25,3 +25,10 @@ def compress_private_key(private_key_in_hex):
             raise Exception("illegal private key, must be atleast 32 bytes")
         # pad with 1 byte and return
         return private_key_in_hex + "01"
+
+def get_32_bytes_key(private_key_in_hex):
+    private_key_bytes = bytearray.fromhex(private_key_in_hex)
+    if len(private_key_bytes) == 33:
+        return private_key_in_hex[:64]
+    else:
+        return private_key_in_hex
