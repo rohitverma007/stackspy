@@ -1,5 +1,5 @@
 from enum import Enum
-from helpers import compress_private_key
+from .helpers import compress_private_key
 import hashlib
 class DerivationType(Enum):
     Wallet = 1

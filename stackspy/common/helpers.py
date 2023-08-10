@@ -5,6 +5,22 @@ from bitcoinlib.keys import HDKey
 
 PRIVATE_KEY_COMPRESSED_LENGTH = 33
 
+
+class StacksMessageType(Enum):
+    Address = 0
+    Principal = 1
+    LengthPrefixedString = 2
+    MemoString = 3
+    AssetInfo = 4
+    PostCondition = 5
+    PublicKey = 6
+    LengthPrefixedList = 7
+    Payload = 8
+    MessageSignature = 9
+    StructuredDataSignature = 10
+    TransactionAuthField = 11
+
+
 class DerivationType(Enum):
     Wallet = 1
     Data = 2

@@ -1,5 +1,5 @@
-from .constants import TransactionVersion, ChainID
-from .fetch import createFetchFn
+from constants import TransactionVersion, ChainID
+from fetch import createFetchFn
 
 HIRO_MAINNET_DEFAULT = 'https://stacks-node-api.mainnet.stacks.co'
 HIRO_TESTNET_DEFAULT = 'https://stacks-node-api.testnet.stacks.co'

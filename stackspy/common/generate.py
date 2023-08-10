@@ -9,11 +9,11 @@ from cryptography.hazmat.backends import default_backend
 
 from binascii import hexlify, unhexlify
 from mnemonic import Mnemonic
-from derive import derive_wallet_keys, derive_account
-from wallet import Wallet
+from .derive import derive_wallet_keys, derive_account
+from .wallet import Wallet
 from bitcoinlib.keys import HDKey
-from account import Account
-from helpers import DerivationType, get_root_node
+from .account import Account
+from .helpers import DerivationType, get_root_node
 
 def generate_mnemonic(bits=256):
     """Generate a mnemonic phrase following BIP39 standards.
