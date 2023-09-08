@@ -1,18 +1,18 @@
-from secp256k1 import PrivateKey
+import json
+import requests
+from network import StacksNetwork
 from enum import Enum
-import base32_lib as base32
 import hashlib
 from common.c32helpers import c32_address
-from common.helpers import get_32_bytes_key, StacksMessageType
+from common.helpers import StacksMessageType, PayloadType, pub_key_from_priv_key, empty_signature_message, create_standard_auth
 from common.clarity import prinicpal_cv
-from network import StacksMainnet
+from network import StacksTestnet
 from common.StacksTransaction import StacksTransaction
+from constants import TransactionVersion, PubKeyEncoding
+from common.TransactionSigner import TransactionSigner
 
 MEMO_MAX_LENGTH_BYTES = 34
-
-class TransactionVersion(Enum):
-    Mainnet = 0x00
-    Testnet = 0x80
+PRIVATE_KEY_COMPRESSED_LENGTH  = 33
 
 class AddressHashMode(Enum):
     # SingleSigHashMode - hash160(public-key), same as bitcoin's p2pkh
@@ -30,15 +30,6 @@ class AddressVersion(Enum):
     TestnetSingleSig = 26
     TestnetMultiSig = 21
 
-class PayloadType(Enum):
-    TokenTransfer = 0x00
-    SmartContract = 0x01
-    VersionedSmartContract = 0x06
-    ContractCall = 0x02
-    PoisonMicroblock = 0x03
-    Coinbase = 0x04
-    CoinbaseToAltRecipient = 0x05
-
 
 def get_address_from_private_key(private_key, transaction_version):
     pub_key = pub_key_from_priv_key(private_key)
@@ -47,15 +38,10 @@ def get_address_from_private_key(private_key, transaction_version):
 
 def get_address_from_public_key(pub_key, transaction_version):
     address_version = address_hash_mode_to_version(AddressHashMode.SerializeP2PKH, transaction_version)
-    # bytearray.fromhex(private_key_32_bytes)
     address_dict = address_from_version_hash(address_version, hashlib.new('ripemd160', hashlib.sha256(bytearray.fromhex(pub_key)).digest()).hexdigest())
     address_string = address_to_string(address_dict)
     return address_string
 
-def pub_key_from_priv_key(private_key_32_bytes):
-    # public_key = PublicKey()
-    private_key = PrivateKey(privkey=bytes(bytearray.fromhex(get_32_bytes_key(private_key_32_bytes))), raw=True)
-    return private_key.pubkey.serialize().hex()        
 
 
 def address_hash_mode_to_version(hash_mode: AddressHashMode, tx_version: TransactionVersion) -> AddressVersion:
@@ -95,10 +81,17 @@ def get_stx_address(account, transaction_version = TransactionVersion.Testnet):
 def make_stx_token_transfer(tx_options):
     if 'sender_key' in tx_options:
         public_key = pub_key_from_priv_key(tx_options["sender_key"])
+        priv_key_address = tx_options["sender_key"]
         tx_options.pop("sender_key")
         tx_options["public_key"] = public_key
         transaction = make_unsigned_stx_token_transfer(tx_options)
-        print(transaction)
+        priv_key = {
+            "data": priv_key_address,
+            "compressed": len(bytearray.fromhex(priv_key_address)) == PRIVATE_KEY_COMPRESSED_LENGTH
+        }
+        signer = TransactionSigner(transaction)
+        signer.sign_origin(priv_key)
+        return transaction
 
 def create_memo_string(memo_content):
     if len(memo_content.encode('utf-8')) > MEMO_MAX_LENGTH_BYTES:
@@ -109,8 +102,6 @@ def create_memo_string(memo_content):
 def create_token_transfer_payload(recipient, amount, memo=None):
     recipient = prinicpal_cv(recipient)
     memo = create_memo_string(memo)
-    print(recipient)
-    print(memo)
     return {
         "type": StacksMessageType.Payload.value,
         "payloadType": PayloadType.TokenTransfer.value,
@@ -120,31 +111,60 @@ def create_token_transfer_payload(recipient, amount, memo=None):
     }
 
 def estimate_transaction_byte_length(transaction):
-    # TODO - SERIALIZE INTO BYTES AND RETUR LENGTH
-    return 0
+    # TODO - implement multi-sig
+    return len(transaction.serialize())
+
+def get_nonce(sender_address, network):
+    derived_network = StacksNetwork.fromNameOrNetwork(network)
+    response = requests.get(derived_network.getAccountApiUrl(sender_address))
+    return response.json()["nonce"]
 
 def estimate_transaction_fee_with_fallback(transaction, network):
     estimated_len = estimate_transaction_byte_length(transaction)
-    # TODO - Continue from here.
+    fee_estimation = estimate_transaction(transaction, estimated_len, network)
+    return fee_estimation
+    # TODO - fallback?
+
+def get_address_dict_from_pub_key(public_key, transaction_version):
+    address_version = address_hash_mode_to_version(AddressHashMode.SerializeP2PKH, transaction_version)
+    address_dict = address_from_version_hash(address_version, hashlib.new('ripemd160', hashlib.sha256(bytearray.fromhex(public_key)).digest()).hexdigest())
+    return address_dict
+
+def create_single_sig_spending_condition(hash_mode, public_key, nonce, fee, transaction_version=TransactionVersion.Testnet):
+    signer = get_address_dict_from_pub_key(public_key, transaction_version)
+    key_encoding = PubKeyEncoding.Compressed
+    return {
+        "hashMode": hash_mode,
+        "signer": signer,
+        "nonce": nonce,
+        "fee": fee,
+        "keyEncoding": key_encoding,
+        "signature": empty_signature_message()
+    }
+        
 
 def make_unsigned_stx_token_transfer(tx_options):
     options = {
         "fee": 0,
         "nonce": 0,
-        "network": StacksMainnet(),
+        "network": StacksTestnet(),
         "memo": "",
         "sponsored": False
     }
 
     options.update(tx_options)
     payload = create_token_transfer_payload(options["recipient"], options["amount"], options["memo"])
-    print(payload)
     authorization = None
     spending_condition = None
 
-    # TODO - Implement:
     if 'public_key' in options:
-        pass
+        spending_condition = create_single_sig_spending_condition(
+            AddressHashMode.SerializeP2PKH,
+            options["public_key"],
+            options["nonce"],
+            options["fee"],
+            options["network"].version
+        )
     else:
         pass
 
@@ -152,7 +172,7 @@ def make_unsigned_stx_token_transfer(tx_options):
     if options["sponsored"]:
         pass
     else:
-        pass
+        authorization = create_standard_auth(spending_condition)
 
     # TODO - optionally get network from name
     network = options["network"]
@@ -163,9 +183,37 @@ def make_unsigned_stx_token_transfer(tx_options):
         payload,
         None,
         None,
-        options["anchor_mode"],
+        None,
         network.chainId.value #value or enum
     )
 
     if ("fee" not in tx_options):
         fee = estimate_transaction_fee_with_fallback(transaction, network)
+        transaction.set_fee(fee)
+    else:
+        transaction.set_fee(tx_options["fee"])
+    
+    if ("nonce" not in tx_options):
+        address_version = AddressVersion.TestnetSingleSig
+        if network.version == TransactionVersion.Mainnet:
+            address_version = AddressVersion.MainnetSingleSig
+        sender_address = c32_address(address_version, transaction.auth["spendingCondition"]["signer"]["hash160"])
+        tx_nonce = get_nonce(sender_address, network)
+        transaction.set_nonce(tx_nonce)
+    else:
+        transaction.set_nonce(tx_options["nonce"])
+    return transaction
+
+def broadcast_transaction(transaction, network, attachment=None):
+    raw_tx = transaction.serialize().hex()
+    derived_network = StacksNetwork.fromNameOrNetwork(network)
+    response = requests.post(derived_network.getBroadcastApiUrl(), headers={'Content-Type': 'application/json'}, data=json.dumps(raw_tx))
+    return response
+
+def estimate_transaction(transaction, estimated_len=None, network=None):
+    derived_network = StacksNetwork.fromNameOrNetwork(network)
+    response = requests.post(derived_network.getTransactionFeeEstimateApiUrl(), headers={'Content-Type': 'application/json'}, data=json.dumps({
+        "transaction_payload": transaction.serialize_payload().hex(),
+        "estimated_len": estimated_len # TODO - optionally dont send
+    }))
+    return response.json()["estimations"][1]["fee"]
