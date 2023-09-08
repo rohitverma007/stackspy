@@ -1,6 +1,6 @@
 from secp256k1 import PrivateKey, PublicKey
 import struct
-
+from common.helpers import StacksMessageType
 def ensure_uint53(n):
     MAX_SAFE_INTEGER = 9007199254740991
     if n < 0 or n > MAX_SAFE_INTEGER or n != int(n):
@@ -97,14 +97,35 @@ def decode_message(encoded_message, prefix = '\x17Stacks Signed Message:\n'):
     return message_without_chain_prefix[var_int_length:]  # Remove the varint prefix
 
 def sign_message_hash_rsv(message_hash, private_key):
+    private_key = compress_key_if_needed(private_key)
     privkey = PrivateKey(bytes(bytearray.fromhex(private_key)), raw=True)
-    unserialied_signature = privkey.ecdsa_sign_recoverable(
+    unserialized_signature = privkey.ecdsa_sign_recoverable(
         bytes(bytearray.fromhex(message_hash)), raw=True)
     message_signature, recovery_id = privkey.ecdsa_recoverable_serialize(
-        unserialied_signature)
+        unserialized_signature)
     rsv_signature = message_signature+recovery_id.to_bytes(1, 'big')
 
     return {
         "signature": rsv_signature.hex(),
         "publicKey": privkey.pubkey.serialize().hex()
+    }
+
+def compress_key_if_needed(private_key):
+    byte_length = len(bytearray.fromhex(private_key))
+    if byte_length == 33 and private_key[-2:] == "01":
+        return private_key[:-2]
+    else:
+        return private_key
+        
+
+def sign_with_key(message_hash, private_key):
+    private_key = compress_key_if_needed(private_key)
+    privkey = PrivateKey(bytes(bytearray.fromhex(private_key)), raw=True)
+    unserialized_signature = privkey.ecdsa_sign_recoverable(
+        bytes(bytearray.fromhex(message_hash)), raw=True)
+    message_signature, recovery_id = privkey.ecdsa_recoverable_serialize(
+        unserialized_signature)
+    return {
+        "type": StacksMessageType.MessageSignature,
+        "data": recovery_id.to_bytes(1, 'big').hex()+message_signature.hex()
     }

@@ -1,5 +1,5 @@
-from .constants import TransactionVersion, ChainID
-from .fetch import createFetchFn
+from constants import TransactionVersion, ChainID
+from fetch import createFetchFn
 
 HIRO_MAINNET_DEFAULT = 'https://stacks-node-api.mainnet.stacks.co'
 HIRO_TESTNET_DEFAULT = 'https://stacks-node-api.testnet.stacks.co'
@@ -38,7 +38,7 @@ class StacksNetwork:
 
     @staticmethod
     def fromNameOrNetwork(network):
-        if isinstance(network, str) and 'version' in network:
+        if isinstance(network, StacksNetwork) and network.version is not None:
             return network
         return StacksNetwork.fromName(network)
 
@@ -55,7 +55,7 @@ class StacksNetwork:
         return "{}{}".format(self.coreApiUrl, self.transactionFeeEstimateEndpoint)
 
     def getAccountApiUrl(self, address):
-        return "{}{}{}?proof=0".format(self.coreApiUrl, self.accountEndpoint, address)
+        return "{}{}/{}?proof=0".format(self.coreApiUrl, self.accountEndpoint, address)
 
     def getAccountExtendedBalancesApiUrl(self, address):
         return "{}/extended/v1/address/{}/balances".format(self.coreApiUrl, address)
