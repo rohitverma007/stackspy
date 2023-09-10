@@ -23,7 +23,7 @@ Example code for transactions:
 
 ```
 from network import StacksTestnet
-from transactions import make_stx_token_transfer
+from transactions import make_stx_token_transfer, broadcast_transaction
 network = StacksTestnet()
 tx_options = {
     "recipient": 'ST319CF5WV77KYR1H3GT0GZ7B8Q4AQPY42ETP1VPF',
