@@ -205,9 +205,9 @@ def make_unsigned_stx_token_transfer(tx_options):
     return transaction
 
 def broadcast_transaction(transaction, network, attachment=None):
-    raw_tx = transaction.serialize().hex()
+    raw_tx = transaction.serialize()
     derived_network = StacksNetwork.fromNameOrNetwork(network)
-    response = requests.post(derived_network.getBroadcastApiUrl(), headers={'Content-Type': 'application/json'}, data=json.dumps(raw_tx))
+    response = requests.post(derived_network.getBroadcastApiUrl(), headers={'Content-Type': 'application/octet-stream'}, data=raw_tx)
     return response
 
 def estimate_transaction(transaction, estimated_len=None, network=None):
