@@ -23,14 +23,14 @@ Example code for transactions:
 
 ```
 from network import StacksTestnet
-from transactions import make_stx_token_transfer
+from transactions import make_stx_token_transfer, broadcast_transaction
 network = StacksTestnet()
 tx_options = {
     "recipient": 'ST319CF5WV77KYR1H3GT0GZ7B8Q4AQPY42ETP1VPF',
     "sender_key": "b244296d5907de9864c0b0d51f98a13c52890be0404e83f273144cd5b9960eed01",
     "network": network,
     "memo": "hello from python",
-    "amount": 10
+    "amount": 10000000 #amount is in micro-STX
 }
 
 transaction = make_stx_token_transfer(tx_options)
