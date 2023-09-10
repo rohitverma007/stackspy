@@ -35,4 +35,6 @@ tx_options = {
 
 transaction = make_stx_token_transfer(tx_options)
 print(transaction.serialize().hex())
+broadcast_result = broadcast_transaction(transaction, 'testnet')
+print(broadcast_result.json())
 ```
