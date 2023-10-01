@@ -1,5 +1,5 @@
 import unittest
-import c32helpers
+from stackspy.common import c32helpers
 
 class TestC32Helpers(unittest.TestCase):
 
