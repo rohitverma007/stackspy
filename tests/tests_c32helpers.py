@@ -1,4 +1,7 @@
 import unittest
+import sys
+
+sys.path.insert(0, '../')
 from stackspy.common import c32helpers
 
 class TestC32Helpers(unittest.TestCase):
